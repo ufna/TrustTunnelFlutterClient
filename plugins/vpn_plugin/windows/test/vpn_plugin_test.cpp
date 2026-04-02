@@ -7,8 +7,7 @@ namespace test {
 
 TEST(VpnPlugin, InitialStateIsDisconnected) {
   auto handler = std::make_unique<VpnEventStreamHandler>();
-  // ui_runner is nullptr in tests — we won't exercise async paths.
-  IVpnManagerImpl manager(handler.get(), nullptr);
+  IVpnManagerImpl manager(handler.get());
   auto result = manager.GetCurrentState();
   ASSERT_FALSE(result.has_error());
   EXPECT_EQ(result.value(), VpnManagerState::kDisconnected);
@@ -16,7 +15,7 @@ TEST(VpnPlugin, InitialStateIsDisconnected) {
 
 TEST(VpnPlugin, StopReturnsDisconnected) {
   auto handler = std::make_unique<VpnEventStreamHandler>();
-  IVpnManagerImpl manager(handler.get(), nullptr);
+  IVpnManagerImpl manager(handler.get());
   auto err = manager.Stop();
   EXPECT_FALSE(err.has_value());
   auto result = manager.GetCurrentState();

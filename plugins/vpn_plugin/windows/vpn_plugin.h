@@ -3,6 +3,7 @@
 
 #include <flutter/event_channel.h>
 #include <flutter/plugin_registrar_windows.h>
+#include <flutter/standard_method_codec.h>
 
 #include <memory>
 #include <mutex>
@@ -38,8 +39,7 @@ class VpnEventStreamHandler
 // Simulates VPN state transitions without actual network activity.
 class IVpnManagerImpl : public IVpnManager {
  public:
-  IVpnManagerImpl(VpnEventStreamHandler* handler,
-                  std::shared_ptr<flutter::TaskRunner> ui_runner);
+  explicit IVpnManagerImpl(VpnEventStreamHandler* handler);
 
   std::optional<FlutterError> Start(const std::string& server_name,
                                     const std::string& config) override;
@@ -50,7 +50,6 @@ class IVpnManagerImpl : public IVpnManager {
 
  private:
   VpnEventStreamHandler* handler_;
-  std::shared_ptr<flutter::TaskRunner> ui_runner_;
   VpnManagerState state_ = VpnManagerState::kDisconnected;
 };
 

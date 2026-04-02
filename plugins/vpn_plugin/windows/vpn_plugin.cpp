@@ -1,8 +1,5 @@
 #include "vpn_plugin.h"
 
-#include <chrono>
-#include <thread>
-
 namespace vpn_plugin {
 
 // ---- VpnEventStreamHandler ----
@@ -34,21 +31,18 @@ VpnEventStreamHandler::OnCancelInternal(
 
 // ---- IVpnManagerImpl ----
 
-IVpnManagerImpl::IVpnManagerImpl(VpnEventStreamHandler* handler,
-                                 std::shared_ptr<flutter::TaskRunner> ui_runner)
-    : handler_(handler), ui_runner_(std::move(ui_runner)) {}
+IVpnManagerImpl::IVpnManagerImpl(VpnEventStreamHandler* handler)
+    : handler_(handler) {}
 
 std::optional<FlutterError> IVpnManagerImpl::Start(
     const std::string& /*server_name*/, const std::string& /*config*/) {
   state_ = VpnManagerState::kConnecting;
   handler_->EmitState(state_);
 
-  // Simulate async connection: transition to connected after 2 seconds.
-  std::thread([this]() {
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    state_ = VpnManagerState::kConnected;
-    ui_runner_->PostTask([this]() { handler_->EmitState(state_); });
-  }).detach();
+  // Mock: immediately transition to connected.
+  // A real implementation would start the VPN engine asynchronously.
+  state_ = VpnManagerState::kConnected;
+  handler_->EmitState(state_);
 
   return std::nullopt;
 }
@@ -72,7 +66,8 @@ ErrorOr<VpnManagerState> IVpnManagerImpl::GetCurrentState() {
 // ---- IDeepLinkImpl ----
 
 ErrorOr<std::string> IDeepLinkImpl::Decode(const std::string& /*uri*/) {
-  return FlutterError("unimplemented", "Deep link decoding is not supported on Windows");
+  return FlutterError("unimplemented",
+                      "Deep link decoding is not supported on Windows");
 }
 
 // ---- VpnPlugin ----
@@ -80,7 +75,6 @@ ErrorOr<std::string> IDeepLinkImpl::Decode(const std::string& /*uri*/) {
 void VpnPlugin::RegisterWithRegistrar(
     flutter::PluginRegistrarWindows* registrar) {
   auto messenger = registrar->messenger();
-  auto ui_runner = registrar->task_runner();
 
   auto handler = std::make_unique<VpnEventStreamHandler>();
 
@@ -91,8 +85,7 @@ void VpnPlugin::RegisterWithRegistrar(
   event_channel->SetStreamHandler(
       std::unique_ptr<VpnEventStreamHandler>(handler.get()));
 
-  auto vpn_manager =
-      std::make_unique<IVpnManagerImpl>(handler.get(), ui_runner);
+  auto vpn_manager = std::make_unique<IVpnManagerImpl>(handler.get());
   auto deep_link = std::make_unique<IDeepLinkImpl>();
 
   // Register Pigeon host API handlers.
