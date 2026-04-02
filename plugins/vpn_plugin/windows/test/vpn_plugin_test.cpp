@@ -1,42 +1,33 @@
-#include <flutter/method_call.h>
-#include <flutter/method_result_functions.h>
-#include <flutter/standard_method_codec.h>
 #include <gtest/gtest.h>
-#include <windows.h>
-
-#include <memory>
-#include <string>
-#include <variant>
 
 #include "vpn_plugin.h"
 
 namespace vpn_plugin {
 namespace test {
 
-namespace {
+TEST(VpnPlugin, InitialStateIsDisconnected) {
+  auto handler = std::make_unique<VpnEventStreamHandler>();
+  // ui_runner is nullptr in tests — we won't exercise async paths.
+  IVpnManagerImpl manager(handler.get(), nullptr);
+  auto result = manager.GetCurrentState();
+  ASSERT_FALSE(result.has_error());
+  EXPECT_EQ(result.value(), VpnManagerState::kDisconnected);
+}
 
-using flutter::EncodableMap;
-using flutter::EncodableValue;
-using flutter::MethodCall;
-using flutter::MethodResultFunctions;
+TEST(VpnPlugin, StopReturnsDisconnected) {
+  auto handler = std::make_unique<VpnEventStreamHandler>();
+  IVpnManagerImpl manager(handler.get(), nullptr);
+  auto err = manager.Stop();
+  EXPECT_FALSE(err.has_value());
+  auto result = manager.GetCurrentState();
+  EXPECT_EQ(result.value(), VpnManagerState::kDisconnected);
+}
 
-}  // namespace
-
-TEST(VpnPlugin, GetPlatformVersion) {
-  VpnPlugin plugin;
-  // Save the reply value from the success callback.
-  std::string result_string;
-  plugin.HandleMethodCall(
-      MethodCall("getPlatformVersion", std::make_unique<EncodableValue>()),
-      std::make_unique<MethodResultFunctions<>>(
-          [&result_string](const EncodableValue* result) {
-            result_string = std::get<std::string>(*result);
-          },
-          nullptr, nullptr));
-
-  // Since the exact string varies by host, just ensure that it's a string
-  // with the expected format.
-  EXPECT_TRUE(result_string.rfind("Windows ", 0) == 0);
+TEST(VpnPlugin, DeepLinkReturnsUnimplemented) {
+  IDeepLinkImpl deep_link;
+  auto result = deep_link.Decode("trusttunnel://example");
+  EXPECT_TRUE(result.has_error());
+  EXPECT_EQ(result.error().code(), "unimplemented");
 }
 
 }  // namespace test

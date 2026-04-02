@@ -20,6 +20,8 @@ set(PLUGIN_NAME "vpn_plugin_plugin")
 list(APPEND PLUGIN_SOURCES
   "vpn_plugin.cpp"
   "vpn_plugin.h"
+  "platform_api.g.cpp"
+  "platform_api.g.h"
 )
 
 # Define the plugin library target. Its name must not be changed (see comment
