@@ -28,8 +28,8 @@ import 'package:pigeon/pigeon.dart';
     dartOut: 'lib/platform_api.g.dart',
     dartOptions: DartOptions(),
     cppOptions: CppOptions(namespace: 'vpn_plugin'),
-    cppHeaderOut: 'windows/runner/platform_api.g.h',
-    cppSourceOut: 'windows/runner/platform_api.g.cpp',
+    cppHeaderOut: 'windows/platform_api.g.h',
+    cppSourceOut: 'windows/platform_api.g.cpp',
     kotlinOut: 'android/src/main/kotlin/com/adguard/trusttunnel/vpn_plugin/PlatformApi.g.kt',
     kotlinOptions: KotlinOptions(
       package: 'com.adguard.trusttunnel.vpn_plugin',
