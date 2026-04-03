@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <regex>
+#include <thread>
 
 namespace vpn_plugin {
 
@@ -93,16 +94,20 @@ std::optional<FlutterError> IVpnManagerImpl::Start(
     state_ = VpnManagerState::kConnecting;
     handler_->EmitState(state_);
 
-    if (!service_manager_->LaunchIfNeeded()) {
-      // UAC declined or launch failed.
-      state_ = VpnManagerState::kDisconnected;
-      handler_->EmitState(state_);
-      return std::nullopt;
-    }
-
+    // Run launch + start on a background thread to avoid blocking the
+    // Flutter platform thread (ConnectNamedPipe + UAC prompt can block).
     auto patched = PatchConfig(config);
-    auto temp_path = WriteTempConfig(patched);
-    service_manager_->SendStart(temp_path);
+    auto* mgr = service_manager_;
+    auto* self = this;
+    std::thread([mgr, self, patched]() {
+      if (!mgr->LaunchIfNeeded()) {
+        // UAC declined or launch failed.
+        self->OnStateChanged(0);  // Disconnected
+        return;
+      }
+      auto temp_path = WriteTempConfig(patched);
+      mgr->SendStart(temp_path);
+    }).detach();
   } else {
     // Mock fallback.
     state_ = VpnManagerState::kConnected;

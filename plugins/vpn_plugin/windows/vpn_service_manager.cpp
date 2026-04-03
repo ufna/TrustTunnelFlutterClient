@@ -49,6 +49,7 @@ bool VpnServiceManager::CreatePipeAndLaunch() {
   sei.lpVerb = "runas";
   sei.lpFile = service_exe.c_str();
   sei.lpParameters = pipe_name_.c_str();
+  sei.lpDirectory = dir.c_str();  // So helper finds vpn_easy.dll
   sei.nShow = SW_HIDE;
 
   if (!ShellExecuteExA(&sei)) {
