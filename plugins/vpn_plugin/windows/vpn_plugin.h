@@ -11,6 +11,7 @@
 #include <string>
 
 #include "platform_api.g.h"
+#include "vpn_easy_loader.h"
 
 namespace vpn_plugin {
 
@@ -36,11 +37,10 @@ class VpnEventStreamHandler
   std::optional<VpnManagerState> pending_state_;
 };
 
-// Mock implementation of the Pigeon-generated IVpnManager host API.
-// Simulates VPN state transitions without actual network activity.
+// VPN manager using vpn_easy.dll when available, mock fallback otherwise.
 class IVpnManagerImpl : public IVpnManager {
  public:
-  explicit IVpnManagerImpl(VpnEventStreamHandler* handler);
+  IVpnManagerImpl(VpnEventStreamHandler* handler, VpnEasyLoader* loader);
 
   std::optional<FlutterError> Start(const std::string& server_name,
                                     const std::string& config) override;
@@ -49,8 +49,14 @@ class IVpnManagerImpl : public IVpnManager {
       const std::string* server_name, const std::string* config) override;
   ErrorOr<VpnManagerState> GetCurrentState() override;
 
+  // Called from vpn_easy state callback (background thread).
+  void OnStateChanged(VpnManagerState new_state);
+
  private:
+  static void VpnStateCallback(void* arg, int state);
+
   VpnEventStreamHandler* handler_;
+  VpnEasyLoader* loader_;
   VpnManagerState state_ = VpnManagerState::kDisconnected;
 };
 
@@ -69,6 +75,7 @@ class VpnPlugin : public flutter::Plugin {
       std::unique_ptr<flutter::EventChannel<flutter::EncodableValue>>
           event_channel,
       std::unique_ptr<VpnEventStreamHandler> handler,
+      std::unique_ptr<VpnEasyLoader> loader,
       std::unique_ptr<IVpnManagerImpl> vpn_manager,
       std::unique_ptr<IDeepLinkImpl> deep_link);
 
@@ -81,6 +88,7 @@ class VpnPlugin : public flutter::Plugin {
   std::unique_ptr<flutter::EventChannel<flutter::EncodableValue>>
       event_channel_;
   std::unique_ptr<VpnEventStreamHandler> handler_;
+  std::unique_ptr<VpnEasyLoader> loader_;
   std::unique_ptr<IVpnManagerImpl> vpn_manager_;
   std::unique_ptr<IDeepLinkImpl> deep_link_;
 };

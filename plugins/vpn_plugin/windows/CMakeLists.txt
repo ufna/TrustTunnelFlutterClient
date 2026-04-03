@@ -20,6 +20,8 @@ set(PLUGIN_NAME "vpn_plugin_plugin")
 list(APPEND PLUGIN_SOURCES
   "vpn_plugin.cpp"
   "vpn_plugin.h"
+  "vpn_easy_loader.cpp"
+  "vpn_easy_loader.h"
   "platform_api.g.cpp"
   "platform_api.g.h"
 )
@@ -53,10 +55,19 @@ target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an
 # external build triggered from this build file.
-set(vpn_plugin_bundled_libraries
-  ""
-  PARENT_SCOPE
-)
+# Pre-built native VPN library and Wintun driver.
+# Place vpn_easy.dll and wintun.dll in the bin/ subdirectory.
+# If absent, the plugin falls back to mock VPN behaviour.
+set(vpn_plugin_bundled_libraries "" PARENT_SCOPE)
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bin/vpn_easy.dll")
+  list(APPEND _bundled "${CMAKE_CURRENT_SOURCE_DIR}/bin/vpn_easy.dll")
+endif()
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bin/wintun.dll")
+  list(APPEND _bundled "${CMAKE_CURRENT_SOURCE_DIR}/bin/wintun.dll")
+endif()
+if (_bundled)
+  set(vpn_plugin_bundled_libraries ${_bundled} PARENT_SCOPE)
+endif()
 
 # === Tests ===
 # These unit tests can be run from a terminal after building the example, or
