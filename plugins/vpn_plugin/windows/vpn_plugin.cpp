@@ -16,7 +16,8 @@ static void DebugLog(const std::string& msg) {
 static void RedirectStderrToFile() {
   static bool done = false;
   if (!done) {
-    freopen("C:\\Users\\kinder\\vpn_easy_stderr.log", "a", stderr);
+    FILE* f = nullptr;
+    freopen_s(&f, "C:\\Users\\kinder\\vpn_easy_stderr.log", "a", stderr);
     done = true;
   }
 }
