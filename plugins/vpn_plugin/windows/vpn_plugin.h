@@ -33,6 +33,7 @@ class VpnEventStreamHandler
  private:
   std::mutex mutex_;
   std::unique_ptr<flutter::EventSink<flutter::EncodableValue>> sink_;
+  std::optional<VpnManagerState> pending_state_;
 };
 
 // Mock implementation of the Pigeon-generated IVpnManager host API.

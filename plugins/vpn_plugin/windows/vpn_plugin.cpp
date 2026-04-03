@@ -9,6 +9,11 @@ void VpnEventStreamHandler::EmitState(VpnManagerState state) {
   if (sink_) {
     sink_->Success(
         flutter::EncodableValue(static_cast<int64_t>(state)));
+    pending_state_.reset();
+  } else {
+    // Dart hasn't subscribed yet — buffer the latest state so it
+    // gets delivered as soon as OnListenInternal fires.
+    pending_state_ = state;
   }
 }
 
@@ -18,6 +23,12 @@ VpnEventStreamHandler::OnListenInternal(
     std::unique_ptr<flutter::EventSink<flutter::EncodableValue>>&& events) {
   std::lock_guard<std::mutex> lock(mutex_);
   sink_ = std::move(events);
+  // Flush any state that was emitted before Dart subscribed.
+  if (pending_state_.has_value()) {
+    sink_->Success(
+        flutter::EncodableValue(static_cast<int64_t>(*pending_state_)));
+    pending_state_.reset();
+  }
   return nullptr;
 }
 
