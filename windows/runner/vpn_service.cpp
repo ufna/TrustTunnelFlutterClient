@@ -64,25 +64,43 @@ static std::string ReadFileContent(const std::string& path) {
   return ss.str();
 }
 
+// ---- Debug log ----
+
+static void HelperLog(const std::string& msg) {
+  std::ofstream log("C:\\Users\\kinder\\vpn_service_debug.log", std::ios::app);
+  log << msg << std::endl;
+}
+
 // ---- Main ----
 
 int main(int argc, char* argv[]) {
-  if (argc < 2) return 1;
+  HelperLog("=== vpn_service.exe started, argc=" + std::to_string(argc));
+  if (argc < 2) {
+    HelperLog("ERROR: no pipe name argument");
+    return 1;
+  }
 
   const std::string pipe_name = argv[1];
+  HelperLog("Pipe name: " + pipe_name);
 
   // Connect to the named pipe created by the Flutter plugin.
   g_pipe = CreateFileA(pipe_name.c_str(), GENERIC_READ | GENERIC_WRITE,
                        0, nullptr, OPEN_EXISTING, 0, nullptr);
-  if (g_pipe == INVALID_HANDLE_VALUE) return 1;
+  if (g_pipe == INVALID_HANDLE_VALUE) {
+    HelperLog("ERROR: CreateFileA failed, err=" + std::to_string(GetLastError()));
+    return 1;
+  }
+  HelperLog("Connected to pipe OK");
 
   DWORD mode = PIPE_READMODE_BYTE;
   SetNamedPipeHandleState(g_pipe, &mode, nullptr, nullptr);
 
   // Load vpn_easy.dll
   if (LoadVpnEasy()) {
+    HelperLog("vpn_easy.dll loaded OK, sending READY");
     SendLine("READY");
   } else {
+    HelperLog("ERROR: LoadVpnEasy failed, err=" + std::to_string(GetLastError()));
     SendLine("ERROR Failed to load vpn_easy.dll");
   }
 

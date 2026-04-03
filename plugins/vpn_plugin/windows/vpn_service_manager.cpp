@@ -1,8 +1,14 @@
 #include "vpn_service_manager.h"
 
+#include <fstream>
 #include <shellapi.h>
 
 namespace vpn_plugin {
+
+static void MgrLog(const std::string& msg) {
+  std::ofstream f("C:\\Users\\kinder\\vpn_manager_debug.log", std::ios::app);
+  f << msg << std::endl;
+}
 
 VpnServiceManager::VpnServiceManager() {
   pipe_name_ = "\\\\.\\pipe\\trusttunnel_vpn_" +
@@ -28,12 +34,16 @@ bool VpnServiceManager::LaunchIfNeeded() {
 }
 
 bool VpnServiceManager::CreatePipeAndLaunch() {
+  MgrLog("Creating pipe: " + pipe_name_);
   pipe_ = CreateNamedPipeA(
       pipe_name_.c_str(),
       PIPE_ACCESS_DUPLEX,
       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
       1, 4096, 4096, 0, nullptr);
-  if (pipe_ == INVALID_HANDLE_VALUE) return false;
+  if (pipe_ == INVALID_HANDLE_VALUE) {
+    MgrLog("CreateNamedPipeA failed, err=" + std::to_string(GetLastError()));
+    return false;
+  }
 
   // Find vpn_service.exe next to vpn.exe.
   char exe_path[MAX_PATH] = {};
@@ -52,11 +62,14 @@ bool VpnServiceManager::CreatePipeAndLaunch() {
   sei.lpDirectory = dir.c_str();  // So helper finds vpn_easy.dll
   sei.nShow = SW_HIDE;
 
+  MgrLog("Launching: " + service_exe + " " + pipe_name_);
   if (!ShellExecuteExA(&sei)) {
+    MgrLog("ShellExecuteExA failed, err=" + std::to_string(GetLastError()));
     CloseHandle(pipe_);
     pipe_ = INVALID_HANDLE_VALUE;
     return false;
   }
+  MgrLog("ShellExecuteExA OK, waiting for pipe connection...");
 
   if (sei.hProcess) CloseHandle(sei.hProcess);
 
@@ -64,20 +77,23 @@ bool VpnServiceManager::CreatePipeAndLaunch() {
   if (!ConnectNamedPipe(pipe_, nullptr)) {
     DWORD err = GetLastError();
     if (err != ERROR_PIPE_CONNECTED) {
+      MgrLog("ConnectNamedPipe failed, err=" + std::to_string(err));
       CloseHandle(pipe_);
       pipe_ = INVALID_HANDLE_VALUE;
       return false;
     }
   }
+  MgrLog("Helper connected to pipe");
 
   running_.store(true);
   reader_thread_ = std::thread(&VpnServiceManager::ReaderThreadFunc, this);
 
-  // Wait for READY (up to 5 seconds).
-  for (int i = 0; i < 50 && !ready_.load(); ++i) {
+  // Wait for READY (up to 10 seconds).
+  for (int i = 0; i < 100 && !ready_.load(); ++i) {
     Sleep(100);
   }
 
+  MgrLog("Ready: " + std::string(ready_.load() ? "YES" : "NO"));
   return ready_.load();
 }
 
