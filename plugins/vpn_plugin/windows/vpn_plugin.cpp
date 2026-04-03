@@ -1,6 +1,8 @@
 #include "vpn_plugin.h"
 
+#include <algorithm>
 #include <fstream>
+#include <regex>
 
 namespace vpn_plugin {
 
@@ -8,6 +10,42 @@ namespace vpn_plugin {
 static void DebugLog(const std::string& msg) {
   std::ofstream f("C:\\Users\\kinder\\vpn_plugin_debug.log", std::ios::app);
   f << msg << std::endl;
+}
+
+// Redirect stderr to a file so vpn_easy log output is captured.
+static void RedirectStderrToFile() {
+  static bool done = false;
+  if (!done) {
+    freopen("C:\\Users\\kinder\\vpn_easy_stderr.log", "a", stderr);
+    done = true;
+  }
+}
+
+// Patch the config TOML to fix known incompatibilities between
+// the Flutter ConfigurationEncoder output and vpn_easy expectations.
+static std::string PatchConfig(const std::string& config) {
+  std::string out = config;
+
+  // Remove standalone [listener] line (empty parent table before [listener.tun]).
+  // vpn_easy's TOML parser may choke on the empty section.
+  {
+    std::regex re(R"(\n\[listener\]\s*\n)");
+    out = std::regex_replace(out, re, "\n");
+  }
+
+  // Remove custom_sni key (not in vpn_easy TOML schema).
+  {
+    std::regex re(R"(custom_sni\s*=\s*"[^"]*"\n?)");
+    out = std::regex_replace(out, re, "");
+  }
+
+  // Remove upstream_fallback_protocol key (not in vpn_easy TOML schema).
+  {
+    std::regex re(R"(upstream_fallback_protocol\s*=\s*"[^"]*"\n?)");
+    out = std::regex_replace(out, re, "");
+  }
+
+  return out;
 }
 
 // ---- VpnEventStreamHandler ----
@@ -71,10 +109,15 @@ std::optional<FlutterError> IVpnManagerImpl::Start(
   DebugLog("Config:\n" + config);
 
   if (loader_ && loader_->IsLoaded()) {
+    RedirectStderrToFile();
+
+    auto patched = PatchConfig(config);
+    DebugLog("Patched config:\n" + patched);
+
     state_ = VpnManagerState::kConnecting;
     handler_->EmitState(state_);
     DebugLog("Calling vpn_easy_start...");
-    loader_->Start(config.c_str(), &VpnStateCallback, this);
+    loader_->Start(patched.c_str(), &VpnStateCallback, this);
     DebugLog("vpn_easy_start returned");
   } else {
     state_ = VpnManagerState::kConnected;
