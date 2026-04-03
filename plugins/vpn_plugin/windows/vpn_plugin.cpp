@@ -1,6 +1,14 @@
 #include "vpn_plugin.h"
 
+#include <fstream>
+
 namespace vpn_plugin {
+
+// Debug: write text to a log file next to the exe.
+static void DebugLog(const std::string& msg) {
+  std::ofstream f("vpn_plugin_debug.log", std::ios::app);
+  f << msg << std::endl;
+}
 
 // ---- VpnEventStreamHandler ----
 
@@ -44,6 +52,7 @@ IVpnManagerImpl::IVpnManagerImpl(VpnEventStreamHandler* handler,
     : handler_(handler), loader_(loader) {}
 
 void IVpnManagerImpl::VpnStateCallback(void* arg, int state) {
+  DebugLog("VpnStateCallback: state=" + std::to_string(state));
   auto* self = static_cast<IVpnManagerImpl*>(arg);
   if (state < 0 || state > 5) state = 0;
   self->OnStateChanged(static_cast<VpnManagerState>(state));
@@ -56,13 +65,18 @@ void IVpnManagerImpl::OnStateChanged(VpnManagerState new_state) {
 
 std::optional<FlutterError> IVpnManagerImpl::Start(
     const std::string& /*server_name*/, const std::string& config) {
+  DebugLog("=== Start() called ===");
+  DebugLog("DLL loaded: " + std::string(loader_ && loader_->IsLoaded() ? "YES" : "NO"));
+  DebugLog("Config length: " + std::to_string(config.size()));
+  DebugLog("Config:\n" + config);
+
   if (loader_ && loader_->IsLoaded()) {
-    // Real VPN: vpn_easy_start is async — state changes arrive via callback.
     state_ = VpnManagerState::kConnecting;
     handler_->EmitState(state_);
+    DebugLog("Calling vpn_easy_start...");
     loader_->Start(config.c_str(), &VpnStateCallback, this);
+    DebugLog("vpn_easy_start returned");
   } else {
-    // Mock fallback when DLL is not available.
     state_ = VpnManagerState::kConnected;
     handler_->EmitState(state_);
   }
