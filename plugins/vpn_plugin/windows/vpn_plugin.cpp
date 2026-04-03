@@ -4,9 +4,9 @@
 
 namespace vpn_plugin {
 
-// Debug: write text to a log file next to the exe.
+// Debug: write text to a log file in a known writable location.
 static void DebugLog(const std::string& msg) {
-  std::ofstream f("vpn_plugin_debug.log", std::ios::app);
+  std::ofstream f("C:\\Users\\kinder\\vpn_plugin_debug.log", std::ios::app);
   f << msg << std::endl;
 }
 
