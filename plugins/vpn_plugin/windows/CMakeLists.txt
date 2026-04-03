@@ -20,8 +20,8 @@ set(PLUGIN_NAME "vpn_plugin_plugin")
 list(APPEND PLUGIN_SOURCES
   "vpn_plugin.cpp"
   "vpn_plugin.h"
-  "vpn_easy_loader.cpp"
-  "vpn_easy_loader.h"
+  "vpn_service_manager.cpp"
+  "vpn_service_manager.h"
   "platform_api.g.cpp"
   "platform_api.g.h"
 )

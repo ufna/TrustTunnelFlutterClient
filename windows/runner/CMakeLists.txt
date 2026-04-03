@@ -38,3 +38,9 @@ target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.
 add_dependencies(${BINARY_NAME} flutter_assemble)
+
+# Elevated VPN helper process.
+# Runs as administrator, communicates with the main app via named pipe.
+add_executable(vpn_service "vpn_service.cpp")
+apply_standard_settings(vpn_service)
+target_compile_definitions(vpn_service PRIVATE "NOMINMAX")

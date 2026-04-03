@@ -11,7 +11,7 @@
 #include <string>
 
 #include "platform_api.g.h"
-#include "vpn_easy_loader.h"
+#include "vpn_service_manager.h"
 
 namespace vpn_plugin {
 
@@ -37,10 +37,12 @@ class VpnEventStreamHandler
   std::optional<VpnManagerState> pending_state_;
 };
 
-// VPN manager using vpn_easy.dll when available, mock fallback otherwise.
+// VPN manager using elevated vpn_service.exe helper when available,
+// mock fallback otherwise.
 class IVpnManagerImpl : public IVpnManager {
  public:
-  IVpnManagerImpl(VpnEventStreamHandler* handler, VpnEasyLoader* loader);
+  IVpnManagerImpl(VpnEventStreamHandler* handler,
+                  VpnServiceManager* service_manager);
 
   std::optional<FlutterError> Start(const std::string& server_name,
                                     const std::string& config) override;
@@ -49,14 +51,11 @@ class IVpnManagerImpl : public IVpnManager {
       const std::string* server_name, const std::string* config) override;
   ErrorOr<VpnManagerState> GetCurrentState() override;
 
-  // Called from vpn_easy state callback (background thread).
-  void OnStateChanged(VpnManagerState new_state);
+  void OnStateChanged(int state);
 
  private:
-  static void VpnStateCallback(void* arg, int state);
-
   VpnEventStreamHandler* handler_;
-  VpnEasyLoader* loader_;
+  VpnServiceManager* service_manager_;
   VpnManagerState state_ = VpnManagerState::kDisconnected;
 };
 
@@ -75,7 +74,7 @@ class VpnPlugin : public flutter::Plugin {
       std::unique_ptr<flutter::EventChannel<flutter::EncodableValue>>
           event_channel,
       std::unique_ptr<VpnEventStreamHandler> handler,
-      std::unique_ptr<VpnEasyLoader> loader,
+      std::unique_ptr<VpnServiceManager> service_manager,
       std::unique_ptr<IVpnManagerImpl> vpn_manager,
       std::unique_ptr<IDeepLinkImpl> deep_link);
 
@@ -88,7 +87,7 @@ class VpnPlugin : public flutter::Plugin {
   std::unique_ptr<flutter::EventChannel<flutter::EncodableValue>>
       event_channel_;
   std::unique_ptr<VpnEventStreamHandler> handler_;
-  std::unique_ptr<VpnEasyLoader> loader_;
+  std::unique_ptr<VpnServiceManager> service_manager_;
   std::unique_ptr<IVpnManagerImpl> vpn_manager_;
   std::unique_ptr<IDeepLinkImpl> deep_link_;
 };
