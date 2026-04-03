@@ -46,6 +46,13 @@ static std::string PatchConfig(const std::string& config) {
     out = std::regex_replace(out, re, "");
   }
 
+  // Fix DNS upstreams: strip "http://" prefix which is invalid for DNS.
+  // Valid formats: plain ("9.9.9.9"), tls:// , https:// (for DoH), quic://
+  {
+    std::regex re(R"("http://([^"]+)")");
+    out = std::regex_replace(out, re, "\"$1\"");
+  }
+
   return out;
 }
 
